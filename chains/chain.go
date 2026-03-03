@@ -1,6 +1,23 @@
 package chains
 
-var registry = map[string]Chain{}
+import "sync"
+
+var (
+	registry   = map[string]Chain{}
+	registryMu sync.RWMutex
+)
+
+func Register(name string, c Chain) { // call from chain package init
+	registryMu.Lock()
+	defer registryMu.Unlock()
+	registry[name] = c
+}
+
+func Get(name string) Chain {
+	registryMu.RLock()
+	defer registryMu.RUnlock()
+	return registry[name]
+}
 
 type Chain interface {
 	Name() string
@@ -12,6 +29,8 @@ type Chain interface {
 	DeriveAddress(key []byte) (address string, err error)
 }
 
+// optional higher-level interface for transaction signing
+// Chain.Sign is the primary contract; implement this where a single tx object is preferred.
 type BlockchainSigner interface {
 	SignTransaction(tx any) ([]byte, error)
 }
