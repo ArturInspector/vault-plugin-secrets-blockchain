@@ -3,6 +3,9 @@ module github.com/hashicorp/vault-plugin-secrets-kv
 go 1.25.1
 
 require (
+	github.com/btcsuite/btcd v0.25.0
+	github.com/btcsuite/btcd/btcutil v1.1.6
+	github.com/decred/dcrd/dcrec/secp256k1/v4 v4.4.1
 	github.com/go-test/deep v1.1.1
 	github.com/golang/protobuf v1.5.4
 	github.com/hashicorp/go-hclog v1.6.3
@@ -12,6 +15,8 @@ require (
 	github.com/hashicorp/vault/api v1.21.0
 	github.com/hashicorp/vault/sdk v0.19.0
 	github.com/mitchellh/mapstructure v1.5.0
+	github.com/mr-tron/base58 v1.2.0
+	golang.org/x/crypto v0.40.0
 	google.golang.org/protobuf v1.36.9
 )
 
@@ -23,6 +28,8 @@ require (
 	github.com/Microsoft/go-winio v0.6.2 // indirect
 	github.com/armon/go-metrics v0.4.1 // indirect
 	github.com/armon/go-radix v1.0.0 // indirect
+	github.com/btcsuite/btcd/btcec/v2 v2.3.5 // indirect
+	github.com/btcsuite/btcd/chaincfg/chainhash v1.1.0 // indirect
 	github.com/cenkalti/backoff/v4 v4.3.0 // indirect
 	github.com/containerd/errdefs v1.0.0 // indirect
 	github.com/containerd/errdefs/pkg v0.3.0 // indirect
@@ -104,7 +111,6 @@ require (
 	go.opentelemetry.io/otel/trace v1.35.0 // indirect
 	go.opentelemetry.io/proto/otlp v1.3.1 // indirect
 	go.uber.org/atomic v1.11.0 // indirect
-	golang.org/x/crypto v0.40.0 // indirect
 	golang.org/x/net v0.42.0 // indirect
 	golang.org/x/oauth2 v0.30.0 // indirect
 	golang.org/x/sys v0.34.0 // indirect
