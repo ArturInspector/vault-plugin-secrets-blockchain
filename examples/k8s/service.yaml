@@ -1,0 +1,13 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: vault-plugin-blockchain
+  labels:
+    app: vault-plugin-blockchain
+spec:
+  selector:
+    app: vault-plugin-blockchain
+  ports:
+    - name: http
+      port: 8200
+      targetPort: 8200

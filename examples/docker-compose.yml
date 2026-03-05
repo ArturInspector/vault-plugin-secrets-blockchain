@@ -1,0 +1,21 @@
+version: "3.9"
+
+services:
+  vault:
+    image: hashicorp/vault:1.15
+    environment:
+      VAULT_DEV_ROOT_TOKEN_ID: root
+      VAULT_DEV_LISTEN_ADDRESS: "0.0.0.0:8200"
+    command: >
+      vault server
+      -dev
+      -dev-root-token-id=root
+      -dev-plugin-dir=/vault/plugins
+      -log-level=info
+    ports:
+      - "8200:8200"
+    volumes:
+      # Place compiled plugin binary here (vault-plugin-secrets-blockchain) and checksum file.
+      - ./plugin:/vault/plugins
+    cap_add:
+      - IPC_LOCK

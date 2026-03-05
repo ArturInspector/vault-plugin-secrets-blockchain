@@ -1,0 +1,39 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: vault-plugin-blockchain
+  labels:
+    app: vault-plugin-blockchain
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: vault-plugin-blockchain
+  template:
+    metadata:
+      labels:
+        app: vault-plugin-blockchain
+    spec:
+      serviceAccountName: default
+      containers:
+        - name: vault
+          image: hashicorp/vault:1.15
+          args:
+            - "server"
+            - "-dev"
+            - "-dev-root-token-id=root"
+            - "-dev-plugin-dir=/vault/plugins"
+          env:
+            - name: VAULT_DEV_LISTEN_ADDRESS
+              value: "0.0.0.0:8200"
+          ports:
+            - containerPort: 8200
+          volumeMounts:
+            - name: plugin-bin
+              mountPath: /vault/plugins
+          securityContext:
+            capabilities:
+              add: ["IPC_LOCK"]
+      volumes:
+        - name: plugin-bin
+          emptyDir: {}
