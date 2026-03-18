@@ -15,6 +15,7 @@ func main() {
 		Commands: []*cli.Command{
 			hdCommands(),
 			walletCommands(),
+			auditCommands(),
 		},
 		ExitErrHandler: func(c *cli.Context, err error) {
 			if err != nil {
