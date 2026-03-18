@@ -37,9 +37,9 @@ func BlockchainFactory(ctx context.Context, conf *logical.BackendConfig) (logica
 		Help:        "Blockchain signing backend",
 
 		PathsSpecial: &logical.Paths{
-			// Seal wrap all wallet records (includes private keys).
 			SealWrapStorage: []string{
 				path.Join(b.storagePrefix, "wallets") + "/",
+				path.Join(b.storagePrefix, "hd") + "/",
 			},
 		},
 
@@ -47,6 +47,7 @@ func BlockchainFactory(ctx context.Context, conf *logical.BackendConfig) (logica
 			pathWallets(b),
 			pathSign(b),
 			pathSignRaw(b),
+			pathHD(b),
 		),
 	}
 
