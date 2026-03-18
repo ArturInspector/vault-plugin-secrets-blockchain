@@ -142,6 +142,10 @@ func (b *blockchainBackend) loadSigningContext(ctx context.Context, req *logical
 		return nil, nil, nil, logical.ErrorResponse("wallet not found"), nil
 	}
 
+	if entry.State == StateFrozen {
+		return nil, nil, nil, logical.ErrorResponse("wallet %q is frozen: %s", walletName, entry.FreezeNote), nil
+	}
+
 	keyBytes, err := hex.DecodeString(entry.PrivateKey)
 	if err != nil {
 		return nil, nil, nil, nil, errors.New("stored private_key is invalid hex")

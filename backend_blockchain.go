@@ -45,6 +45,7 @@ func BlockchainFactory(ctx context.Context, conf *logical.BackendConfig) (logica
 
 		Paths: framework.PathAppend(
 			pathWallets(b),
+			pathWalletState(b),
 			pathSign(b),
 			pathSignRaw(b),
 			pathHD(b),

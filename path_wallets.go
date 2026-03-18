@@ -16,9 +16,24 @@ import (
 	"golang.org/x/crypto/ed25519"
 )
 
+type WalletState string
+type WalletTier string
+
+const (
+	StateOperational WalletState = "operational"
+	StateFrozen      WalletState = "frozen"
+
+	TierHot  WalletTier = "hot"
+	TierWarm WalletTier = "warm"
+	TierCold WalletTier = "cold"
+)
+
 type walletEntry struct {
-	PrivateKey string `json:"private_key"`
-	Address    string `json:"address"`
+	PrivateKey  string      `json:"private_key"`
+	Address     string      `json:"address"`
+	State       WalletState `json:"state"`
+	Tier        WalletTier  `json:"tier"`
+	FreezeNote  string      `json:"freeze_note,omitempty"`
 }
 
 func pathWallets(b *blockchainBackend) []*framework.Path {
@@ -30,6 +45,11 @@ func pathWallets(b *blockchainBackend) []*framework.Path {
 		Type:        framework.TypeString,
 		Description: "Wallet name.",
 	}
+	tierField := &framework.FieldSchema{
+		Type:        framework.TypeString,
+		Description: "Wallet tier: hot (default) | warm | cold.",
+		Default:     "hot",
+	}
 
 	return []*framework.Path{
 		{
@@ -37,6 +57,7 @@ func pathWallets(b *blockchainBackend) []*framework.Path {
 			Fields: map[string]*framework.FieldSchema{
 				"chain": chainField,
 				"name":  nameField,
+				"tier":  tierField,
 			},
 			ExistenceCheck: b.handleWalletExists,
 			Operations: map[logical.Operation]framework.OperationHandler{
@@ -52,6 +73,7 @@ func pathWallets(b *blockchainBackend) []*framework.Path {
 			Fields: map[string]*framework.FieldSchema{
 				"chain":       chainField,
 				"name":        nameField,
+				"tier":        tierField,
 				"private_key": {Type: framework.TypeString, Description: "Hex-encoded private key."},
 			},
 			ExistenceCheck: b.handleWalletExists,
@@ -110,6 +132,8 @@ func (b *blockchainBackend) handleWalletCreate(ctx context.Context, req *logical
 	entry := walletEntry{
 		PrivateKey: hex.EncodeToString(keyBytes),
 		Address:    addr,
+		State:      StateOperational,
+		Tier:       resolveTier(data),
 	}
 
 	exists, err := b.walletExists(ctx, req.Storage, chainName, walletName)
@@ -162,6 +186,8 @@ func (b *blockchainBackend) handleWalletImport(ctx context.Context, req *logical
 	entry := walletEntry{
 		PrivateKey: privHex,
 		Address:    addr,
+		State:      StateOperational,
+		Tier:       resolveTier(data),
 	}
 
 	if err := b.writeWallet(ctx, req.Storage, chainName, walletName, entry); err != nil {
@@ -202,9 +228,21 @@ func (b *blockchainBackend) handleWalletRotate(ctx context.Context, req *logical
 		return nil, err
 	}
 
+	existing, err := b.readWallet(ctx, req.Storage, chainName, walletName)
+	if err != nil {
+		return nil, err
+	}
+
+	tier := TierHot
+	if existing != nil {
+		tier = existing.Tier
+	}
+
 	entry := walletEntry{
 		PrivateKey: hex.EncodeToString(keyBytes),
 		Address:    addr,
+		State:      StateOperational,
+		Tier:       tier,
 	}
 
 	if err := b.writeWallet(ctx, req.Storage, chainName, walletName, entry); err != nil {
@@ -235,6 +273,8 @@ func (b *blockchainBackend) handleWalletRead(ctx context.Context, req *logical.R
 	return &logical.Response{
 		Data: map[string]interface{}{
 			"address": entry.Address,
+			"state":   string(entry.State),
+			"tier":    string(entry.Tier),
 		},
 	}, nil
 }
@@ -322,6 +362,18 @@ func readChainAndName(data *framework.FieldData) (string, string, error) {
 		return "", "", errors.New("missing name")
 	}
 	return chainName, walletName, nil
+}
+
+func resolveTier(data *framework.FieldData) WalletTier {
+	if raw, ok := data.GetOk("tier"); ok {
+		switch raw.(string) {
+		case "warm":
+			return TierWarm
+		case "cold":
+			return TierCold
+		}
+	}
+	return TierHot
 }
 
 func generatePrivateKey(chainName string) ([]byte, error) {
