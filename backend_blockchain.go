@@ -2,7 +2,6 @@ package kv
 
 import (
 	"context"
-	"fmt"
 	"path"
 
 	"github.com/hashicorp/vault/sdk/framework"
@@ -24,12 +23,13 @@ var _ logical.Backend = &blockchainBackend{}
 
 // BlockchainFactory returns a blockchain signing backend.
 func BlockchainFactory(ctx context.Context, conf *logical.BackendConfig) (logical.Backend, error) {
-	if conf.BackendUUID == "" {
-		return nil, fmt.Errorf("backend uuid is required")
+	prefix := conf.BackendUUID
+	if prefix == "" {
+		prefix = "default"
 	}
 
 	b := &blockchainBackend{
-		storagePrefix: path.Join(conf.BackendUUID, blockchainStoragePrefix),
+		storagePrefix: path.Join(prefix, blockchainStoragePrefix),
 	}
 
 	b.Backend = &framework.Backend{
