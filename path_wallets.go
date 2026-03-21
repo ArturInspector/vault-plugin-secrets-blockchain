@@ -2,18 +2,15 @@ package kv
 
 import (
 	"context"
-	"crypto/rand"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"path"
 
-	"github.com/decred/dcrd/dcrec/secp256k1/v4"
 	"github.com/hashicorp/vault-plugin-secrets-kv/chains"
 	"github.com/hashicorp/vault/sdk/framework"
 	"github.com/hashicorp/vault/sdk/logical"
-	"golang.org/x/crypto/ed25519"
 )
 
 type WalletState string
@@ -119,7 +116,7 @@ func (b *blockchainBackend) handleWalletCreate(ctx context.Context, req *logical
 		return logical.ErrorResponse("unknown chain"), nil
 	}
 
-	keyBytes, err := generatePrivateKey(chainName)
+	keyBytes, err := chain.GenerateKey()
 	if err != nil {
 		return nil, err
 	}
@@ -174,8 +171,8 @@ func (b *blockchainBackend) handleWalletImport(ctx context.Context, req *logical
 		return logical.ErrorResponse("private_key must be hex"), nil
 	}
 
-	if err := validatePrivateKey(chainName, keyBytes); err != nil {
-		return logical.ErrorResponse(err.Error()), nil
+	if len(keyBytes) == 0 {
+		return logical.ErrorResponse("private_key must not be empty"), nil
 	}
 
 	addr, err := chain.DeriveAddress(keyBytes)
@@ -219,7 +216,7 @@ func (b *blockchainBackend) handleWalletRotate(ctx context.Context, req *logical
 		return logical.ErrorResponse("wallet not found"), nil
 	}
 
-	keyBytes, err := generatePrivateKey(chainName)
+	keyBytes, err := chain.GenerateKey()
 	if err != nil {
 		return nil, err
 	}
@@ -283,6 +280,17 @@ func (b *blockchainBackend) handleWalletDelete(ctx context.Context, req *logical
 	chainName, walletName, err := readChainAndName(data)
 	if err != nil {
 		return logical.ErrorResponse(err.Error()), nil
+	}
+
+	entry, err := b.readWallet(ctx, req.Storage, chainName, walletName)
+	if err != nil {
+		return nil, err
+	}
+	if entry == nil {
+		return logical.ErrorResponse("wallet not found"), nil
+	}
+	if entry.State != StateFrozen {
+		return logical.ErrorResponse("wallet must be frozen before deletion (freeze first, then delete)"), nil
 	}
 
 	if err := req.Storage.Delete(ctx, b.walletKey(chainName, walletName)); err != nil {
@@ -376,39 +384,3 @@ func resolveTier(data *framework.FieldData) WalletTier {
 	return TierHot
 }
 
-func generatePrivateKey(chainName string) ([]byte, error) {
-	switch chainName {
-	case "ethereum", "bitcoin":
-		priv, err := secp256k1.GeneratePrivateKey()
-		if err != nil {
-			return nil, err
-		}
-		return priv.Serialize(), nil
-	case "solana":
-		_, priv, err := ed25519.GenerateKey(rand.Reader)
-		if err != nil {
-			return nil, err
-		}
-		return priv, nil
-	default:
-		return nil, fmt.Errorf("unsupported chain %q", chainName)
-	}
-}
-
-func validatePrivateKey(chainName string, key []byte) error {
-	switch chainName {
-	case "ethereum", "bitcoin":
-		if len(key) != 32 {
-			return fmt.Errorf("secp256k1 key must be 32 bytes, got %d", len(key))
-		}
-		_ = secp256k1.PrivKeyFromBytes(key) // validates range
-		return nil
-	case "solana":
-		if len(key) != ed25519.PrivateKeySize {
-			return fmt.Errorf("solana private key must be %d bytes", ed25519.PrivateKeySize)
-		}
-		return nil
-	default:
-		return fmt.Errorf("unsupported chain %q", chainName)
-	}
-}

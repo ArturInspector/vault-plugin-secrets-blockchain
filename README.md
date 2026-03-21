@@ -1,135 +1,122 @@
-# Vault Plugin: Key-Value Secrets Backend [![Build Status](https://travis-ci.org/hashicorp/vault-plugin-secrets-kv.svg?branch=master)](https://travis-ci.org/hashicorp/vault-plugin-secrets-kv)
+# vault-plugin-secrets-blockchain
 
-This is a standalone backend plugin for use with [Hashicorp Vault](https://www.github.com/hashicorp/vault).
-This plugin provides Key-Value functionality to Vault.
+## You have a product. Now where do the keys live?
 
-**Please note**: We take Vault's security and our users' trust very seriously. If you believe you have found a security issue in Vault, _please responsibly disclose_ by contacting us at [security@hashicorp.com](mailto:security@hashicorp.com).
+Sooner or later you need to decide where to keep **company wallet keys**—not personal seed phrases in a notes app, but whatever will sign payouts, escrow releases, and refunds.
 
-## Quick Links
-    - Vault Website: https://www.vaultproject.io
-    - KV Docs: https://www.vaultproject.io/docs/secrets/kv/index.html
-    - Main Project Github: https://www.github.com/hashicorp/vault
+You look around. **Fireblocks** and similar platforms are strong, but for many teams they mean another vendor contract, a long onboarding, and a price you still have to justify. **MPC** and custodial stacks are a discipline of their own: not “plug and play,” but a multi-month project. **AWS KMS** is not in the same box either: there is no first-class **secp256k1** story the way Ethereum and many Bitcoin flows expect.
 
-## Getting Started
+So the honest options are: **build it yourself**—your own storage service, your own signing pipeline, your own risk on every line—or lean on something your stack already runs.
 
-This is a [Vault plugin](https://www.vaultproject.io/docs/internals/plugins.html)
-and is meant to work with Vault. This guide assumes you have already installed Vault
-and have a basic understanding of how Vault works.
+**There is another way.** [HashiCorp Vault](https://www.vaultproject.io/) already gives you policy, audit, and storage. People have asked for **secp256k1** signing in **Transit** for a long time (without it, “Ethereum as people integrate it” does not map cleanly onto the engine everyone wishes for). The conversation ran for years—for example issue [#4594](https://github.com/hashicorp/vault/issues/4594) (*Transit engine ecdsa-secp256k1 support*, opened in 2018, **23 👍** from the community). There were attempts to land it in core—see [PR #11469](https://github.com/hashicorp/vault/pull/11469) and [PR #12685](https://github.com/hashicorp/vault/pull/12685). In 2022 the issue was closed with a clear line: **built-in Transit is not planned to add this in the foreseeable future**, and Vault is open source—fork it or build **plugins** for what you need. Since then, plugins have been the natural home for blockchain-shaped secp256k1 without fighting core’s priorities.
 
-Otherwise, first read this guide on how to [get started with Vault](https://www.vaultproject.io/intro/getting-started/install.html).
+This repository is a **practical answer from that thread**: a standalone secrets engine plugin that attaches to Vault as the place where the key lives and where signing runs—not inside your microservice. We are not “instead of HashiCorp”—we sit **beside** it: same Vault, same policies, same logs.
 
-To learn specifically about how plugins work, see documentation on [Vault plugins](https://www.vaultproject.io/docs/internals/plugins.html).
+**Thank you to the HashiCorp team** for Vault and the plugin ecosystem. **Thank you** as well to everyone who kept raising secp256k1 in issues and PRs—without that noise we would not have such a clear picture of what operators want from infrastructure. We continue that line in open code: not claiming to be the one size for everyone, but giving teams a path where the private key never has to sit in application memory.
 
-## Usage
+This plugin signs for **Ethereum, Bitcoin, and Solana** so your app **never holds the private key**. If you have ever done `read secret → sign in process`, you already know the failure mode; here, signing happens **inside Vault**. We are not pretending to be Fireblocks or an HSM—only a serious step up from “key in env,” using Vault’s policies and audit trail.
 
-Please see [documentation for the plugin](https://www.vaultproject.io/docs/secrets/kv/index.html)
-on the Vault website.
+---
 
-This plugin is currently built into Vault and by default is accessed
-at `kv`. To enable this in a running Vault server:
+## What you get
 
-```sh
-$ vault secrets enable kv
-Success! Enabled the kv secrets engine at: kv/
-```
+- **Keys stay in Vault’s storage** (encrypted at rest; use seal wrap and production hardening for anything that touches real funds).
+- **One place for policy**: who may create wallets, who may sign, which paths—standard Vault policies, not a second auth system.
+- **Audit trail**: signing requests go through Vault’s audit log, alongside the rest of your infrastructure secrets.
+- **Chains today**: `ethereum`, `bitcoin`, `solana`—each behind the same idea: implement `chains.Chain`, register once, route from HTTP paths.
 
-Additionally starting with Vault 0.10 this backend is by default mounted
-at `secret/`.
+Rough flow in words: your service builds the transaction (or the hash you need signed), calls Vault, receives a signature. Broadcasting, indexing, and business rules stay **your** code—on purpose, so you are not locked into our idea of “what a transaction is”.
 
-## Developing
+---
 
-If you wish to work on this plugin, you'll first need
-[Go](https://www.golang.org) installed on your machine
-(version 1.10+ is *required*).
+## What this is not
 
-For local dev first make sure Go is properly installed, including
-setting up a [GOPATH](https://golang.org/doc/code.html#GOPATH).
-Next, clone this repository into
-`$GOPATH/src/github.com/hashicorp/vault-plugin-secrets-kv`.
-You can then download any required build tools by bootstrapping your
-environment:
+- **Not a wallet product** for end users (no balances, no block explorer inside Vault).
+- **Not a replacement for an HSM** when your threat model requires physical key isolation.
+- **Not a shortcut around Vault operations**: unsealed Vault, token hygiene, network TLS, and backup strategy still matter.
 
-```sh
-$ make bootstrap
-```
+The [IDEA.md](IDEA.md) file describes the longer-term vision (governance, tiers, landing page). This README stays close to what the plugin does **today**.
 
-To compile a development version of this plugin, run `make` or `make dev`.
-This will put the plugin binary in the `bin` and `$GOPATH/bin` folders. `dev`
-mode will only generate the binary for your platform and is faster:
+---
 
-```sh
-$ make
-$ make dev
-```
+## Interface (HTTP / Vault API)
 
-Once you've done that, there are two approaches to testing your new plugin version
-in Vault. You can add a temporary `replace` declaration in your local Vault checkout's
-go.mod (above the `require` declarations), such as:
+Mount the plugin (example mount path `chains/`):
 
-```
-replace github.com/hashicorp/vault-plugin-secrets-kv => /path/to/your/project/vault-plugin-secrets-kv
-```
+| What you need | Method | Path pattern |
+|---------------|--------|----------------|
+| Create a wallet (generates a key inside Vault) | `POST` | `chains/:chain/wallets/:name` |
+| Import an existing private key (hex) | `POST` | `chains/:chain/wallets/:name/import` |
+| Read address only (never the private key) | `GET` | `chains/:chain/wallets/:name` |
+| Delete wallet | `DELETE` | `chains/:chain/wallets/:name` |
+| Rotate key | `POST` | `chains/:chain/wallets/:name/rotate` |
+| List wallet names | `LIST` | `chains/:chain/wallets/` |
+| Sign a payload (chain-specific; often a 32-byte hash as hex for ETH/BTC) | `POST` | `chains/:chain/wallets/:name/sign` |
+| Sign a raw message / hash (hex body field `hash`) | `POST` | `chains/:chain/wallets/:name/sign_raw` |
 
-Alternatively, you could go through the plugin process. To do this,
-put the plugin binary into a location of your choice. This directory
-will be specified as the [`plugin_directory`](https://www.vaultproject.io/docs/configuration/index.html#plugin_directory)
-in the Vault config used to start the server.
+`chain` is one of: `ethereum`, `bitcoin`, `solana`.
 
-```json
-...
-plugin_directory = "path/to/plugin/directory"
-...
-```
+Details of signature encoding (e.g. Ethereum `R||S||V`, Bitcoin DER, Solana ed25519) live in the `chains/` packages—read there before integrating, so your broadcaster matches what you verify on-chain.
 
-Start a Vault server with this config file:
-```sh
-$ vault server -config=path/to/config.json ...
-...
-```
+---
 
-Once the server is started, register the plugin in the Vault server's [plugin catalog](https://developer.hashicorp.com/vault/docs/plugins/plugin-architecture#plugin-catalog):
+## Quick start (local)
 
-```sh
-$ vault plugin register \
-        -sha256=<expected SHA256 Hex value of the plugin binary> \
-        -command="vault-plugin-secrets-kv" \
-        secret \
-        kv
-```
+1. Build the plugin binary:
 
-Note you should generate a new sha256 checksum if you have made changes
-to the plugin. Example using openssl:
+   ```sh
+   go build -o vault-plugin-secrets-blockchain ./cmd/vault-plugin-secrets-blockchain
+   ```
+
+2. Run Vault with a plugin directory (see [examples/docker-compose.yml](examples/docker-compose.yml) for a dev layout).
+
+3. Register and enable (names and paths are examples—adjust to your environment):
+
+   ```sh
+   SHA=$(sha256sum vault-plugin-secrets-blockchain | awk '{print $1}')
+   vault plugin register -sha256="$SHA" secret vault-plugin-secrets-blockchain
+   vault secrets enable -path=chains -plugin-name=vault-plugin-secrets-blockchain plugin
+   ```
+
+4. Example policy for an escrow-style path is in [examples/vault-policy.hcl](examples/vault-policy.hcl). Tighten paths and capabilities to your real roles.
+
+A fuller Kubernetes-oriented layout is under [examples/k8s/](examples/k8s/).
+
+---
+
+## This repository
+
+This project started from HashiCorp’s **KV** plugin (`vault-plugin-secrets-kv`). The **blockchain** engine is a separate binary: `cmd/vault-plugin-secrets-blockchain` and `BlockchainFactory` in code. The classic KV engine remains in-tree for upstream alignment and contribution; enable whichever engine your deployment needs.
+
+---
+
+## Development
+
+Requirements: Go (see [.go-version](.go-version)).
 
 ```sh
-openssl dgst -sha256 $GOPATH/vault-plugin-secrets-kv
-...
-SHA256(.../go/bin/vault-plugin-secrets-kv)= 896c13c0f5305daed381952a128322e02bc28a57d0c862a78cbc2ea66e8c6fa1
+go test ./...
+go vet ./...
 ```
 
-Enable the auth plugin backend using the secrets enable plugin command:
+CI runs `go build ./...`, `go test ./...`, and `go vet ./...` on push and pull requests.
 
-```sh
-$ vault secrets enable -plugin-name='kv' plugin
-...
+Upstream KV development flows (e.g. `make dev`, `make test`) still apply to the KV plugin path; for the blockchain plugin, `go build` / `go test` as above are enough for day-to-day work.
 
-Successfully enabled 'plugin' at 'kv'!
-```
+---
 
-#### Tests
+## Security
 
-If you are developing this plugin and want to verify it is still
-functioning (and you haven't broken anything else), we recommend
-running the tests.
+If you think you found a vulnerability in **this fork’s** blockchain signing code, please report responsibly (open a private security advisory on the repository or contact the maintainers you trust). For issues in **HashiCorp Vault core**, use HashiCorp’s process: [security@hashicorp.com](mailto:security@hashicorp.com).
 
-To run the tests, invoke `make test`:
+---
 
-```sh
-$ make test
-```
+## Visuals and site
 
-You can also specify a `TESTARGS` variable to filter tests like so:
+Screenshots, GIFs, and a dedicated landing page will be added separately so this file stays easy to read in a terminal and in git. When they exist, we will link them here.
 
-```sh
-$ make test TESTARGS='--run=TestConfig'
-```
+---
 
+## License
+
+See repository license files. Upstream KV portions retain their original SPDX headers where applicable.
