@@ -36,8 +36,21 @@ example.vault.d
 .vagrant/
 Vagrantfile
 
-# Configs
+# Configs (local Vault configs; keep example policies in repo)
 *.hcl
+!examples/**/*.hcl
+
+# Plugin binaries (build locally)
+vault-plugin-secrets-blockchain
+examples/plugin/*
+!examples/plugin/.gitkeep
+cmd/vsigner/vsigner
+cmd/vsigner-ui/vsigner-ui
+**/vsigner
+**/vsigner-ui
+
+# Editor / agent (local)
+.cursor/
 
 .DS_Store
 .idea
@@ -46,6 +59,12 @@ Vagrantfile
 dist/*
 
 tags
+
+# Local-only (do not commit)
+IDEA.md
+PLAN.md
+examples/payment-service/
+examples/policies/setup.sh
 
 # Editor backups
 *~
