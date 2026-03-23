@@ -1,4 +1,15 @@
-version: "3.9"
+# Local Vault + plugin directory. Good for demos, GIFs, and dev.to walkthroughs.
+#
+# 1. Build the plugin into ./plugin/:
+#    ./examples/build-plugin.sh
+# 2. Register once (from host, with vault CLI):
+#    export VAULT_ADDR=http://127.0.0.1:8200 VAULT_TOKEN=root
+#    SHA=$(sha256sum examples/plugin/vault-plugin-secrets-blockchain | awk '{print $1}')
+#    vault plugin register -sha256="$SHA" secret vault-plugin-secrets-blockchain
+#    vault secrets enable -path=blockchain -plugin-name=vault-plugin-secrets-blockchain plugin
+# 3. Apply policies: see policies/README.md
+#
+# Then: vault write blockchain/chains/ethereum/wallets/demo chain=ethereum name=demo
 
 services:
   vault:
@@ -15,7 +26,6 @@ services:
     ports:
       - "8200:8200"
     volumes:
-      # Place compiled plugin binary here (vault-plugin-secrets-blockchain) and checksum file.
       - ./plugin:/vault/plugins
     cap_add:
       - IPC_LOCK

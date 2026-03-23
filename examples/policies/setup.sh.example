@@ -1,0 +1,55 @@
+set -euo pipefail
+
+PLUGIN_MOUNT="${PLUGIN_MOUNT:-blockchain}"
+POLICIES_DIR="$(dirname "$0")"
+
+log() { echo "[setup] $*"; }
+
+# --- 1. Монтируем плагин ---
+log "Mounting plugin at /$PLUGIN_MOUNT ..."
+vault secrets enable \
+  -path="$PLUGIN_MOUNT" \
+  -plugin-name="vault-plugin-secrets-blockchain" \
+  plugin 2>/dev/null || log "Already mounted, skipping."
+
+# --- 2. Включаем AppRole ---
+log "Enabling AppRole auth..."
+vault auth enable approle 2>/dev/null || log "Already enabled."
+
+# --- 3. Применяем политики ---
+log "Writing policies..."
+vault policy write ops-admin          "$POLICIES_DIR/ops-admin.hcl"
+vault policy write svc-signer         "$POLICIES_DIR/svc-signer.hcl"
+vault policy write readonly-addresses "$POLICIES_DIR/readonly-addresses.hcl"
+vault policy write escrow-signer      "$POLICIES_DIR/escrow-signer.hcl"
+
+# --- 4. AppRole для сервисов (svc-signer) ---
+# Используется всеми backend сервисами. TTL 1h — переаутентификация автоматически.
+log "Creating AppRole: svc-signer"
+vault write auth/approle/role/svc-signer \
+  token_policies="svc-signer" \
+  token_ttl="1h" \
+  token_max_ttl="4h" \
+  secret_id_ttl="0"    # SecretID не истекает — ротируй вручную при смене команды
+
+SVC_ROLE_ID=$(vault read -field=role_id auth/approle/role/svc-signer/role-id)
+SVC_SECRET_ID=$(vault write -field=secret_id -f auth/approle/role/svc-signer/secret-id)
+
+log "svc-signer role_id   = $SVC_ROLE_ID"
+log "svc-signer secret_id = $SVC_SECRET_ID  <-- положи в .env / k8s Secret"
+
+# --- 5. Токен для ops-admin (ручной, короткоживущий) ---
+# Не AppRole — используется вручную через CLI или Vault UI.
+log "Creating ops-admin token (15m TTL)..."
+OPS_TOKEN=$(vault token create \
+  -policy="ops-admin" \
+  -ttl="15m" \
+  -field=token)
+
+log "ops-admin token = $OPS_TOKEN  <-- использовать прямо сейчас, истекает через 15 минут"
+
+log ""
+log "Done. Следующие шаги:"
+log "  1. Создай кошелёк: VAULT_TOKEN=<ops-token> vault write blockchain/chains/ethereum/wallets/hot-1 chain=ethereum name=hot-1"
+log "  2. Положи svc-signer role_id + secret_id в env сервиса"
+log "  3. Проверь адрес: vault read blockchain/chains/ethereum/wallets/hot-1"

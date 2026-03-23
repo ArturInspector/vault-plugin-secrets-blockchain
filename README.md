@@ -41,10 +41,10 @@ The [IDEA.md](IDEA.md) file describes the longer-term vision (governance, tiers,
 
 ## Interface (HTTP / Vault API)
 
-Mount the plugin (example mount path `chains/`):
+Mount the plugin at a path you choose (examples below use **`blockchain`**). All API paths are relative to that mount: `{mount}/chains/...`.
 
-| What you need | Method | Path pattern |
-|---------------|--------|----------------|
+| What you need | Method | Path (under mount) |
+|---------------|--------|---------------------|
 | Create a wallet (generates a key inside Vault) | `POST` | `chains/:chain/wallets/:name` |
 | Import an existing private key (hex) | `POST` | `chains/:chain/wallets/:name/import` |
 | Read address only (never the private key) | `GET` | `chains/:chain/wallets/:name` |
@@ -60,33 +60,44 @@ Details of signature encoding (e.g. Ethereum `R||S||V`, Bitcoin DER, Solana ed25
 
 ---
 
-## Quick start (local)
+## Quick start (Docker + demo flow)
 
-1. Build the plugin binary:
+Step-by-step (build script, `docker compose`, register, first `vault write`) is in **[examples/README.md](examples/README.md)**. That is the path we recommend for a **GIF or asciinema** (one terminal, steps 3–5).
 
-   ```sh
-   go build -o vault-plugin-secrets-blockchain ./cmd/vault-plugin-secrets-blockchain
-   ```
+Shorthand from repo root:
 
-2. Run Vault with a plugin directory (see [examples/docker-compose.yml](examples/docker-compose.yml) for a dev layout).
+```sh
+./examples/build-plugin.sh
+cd examples && docker compose up -d
+# then register + enable — see examples/README.md
+```
 
-3. Register and enable (names and paths are examples—adjust to your environment):
+---
 
-   ```sh
-   SHA=$(sha256sum vault-plugin-secrets-blockchain | awk '{print $1}')
-   vault plugin register -sha256="$SHA" secret vault-plugin-secrets-blockchain
-   vault secrets enable -path=chains -plugin-name=vault-plugin-secrets-blockchain plugin
-   ```
+## Policy presets
 
-4. Example policy for an escrow-style path is in [examples/vault-policy.hcl](examples/vault-policy.hcl). Tighten paths and capabilities to your real roles.
+Ready-made Vault ACLs (replace the `blockchain` prefix if your mount differs):
 
-A fuller Kubernetes-oriented layout is under [examples/k8s/](examples/k8s/).
+| Preset | File |
+|--------|------|
+| Read-only addresses (audit / dashboards) | [examples/policies/readonly-addresses.hcl](examples/policies/readonly-addresses.hcl) |
+| Backend signer (`payment-*` wallets) | [examples/policies/svc-signer.hcl](examples/policies/svc-signer.hcl) |
+| Escrow-only signer (`escrow-*` wallets) | [examples/policies/escrow-signer.hcl](examples/policies/escrow-signer.hcl) |
+| Platform admin (wallets + HD + freeze + sign) | [examples/policies/ops-admin.hcl](examples/policies/ops-admin.hcl) |
+
+Details and `vault policy write ...` commands: **[examples/policies/README.md](examples/policies/README.md)**. Optional **AppRole** bootstrap: copy [examples/policies/setup.sh.example](examples/policies/setup.sh.example) to a local `setup.sh` (see [.gitignore](.gitignore)). Git workflow: **[docs/git-strategy.md](docs/git-strategy.md)**.
+
+OCI image that only builds the plugin binary (for CI): [examples/Dockerfile.plugin](examples/Dockerfile.plugin).
+
+Kubernetes samples: [examples/k8s/](examples/k8s/).
 
 ---
 
 ## This repository
 
 This project started from HashiCorp’s **KV** plugin (`vault-plugin-secrets-kv`). The **blockchain** engine is a separate binary: `cmd/vault-plugin-secrets-blockchain` and `BlockchainFactory` in code. The classic KV engine remains in-tree for upstream alignment and contribution; enable whichever engine your deployment needs.
+
+**What is “extra” in the tree?** See **[docs/repository-layout.md](docs/repository-layout.md)** (upstream KV files, optional CLIs, what should never be committed).
 
 ---
 

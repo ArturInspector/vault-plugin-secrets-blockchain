@@ -1,0 +1,16 @@
+# Multi-stage build: reproducible plugin binary for CI or air-gapped copy.
+# docker build -f examples/Dockerfile.plugin -t vault-plugin-secrets-blockchain:local .
+#
+# The image only contains the binary under /plugin/ — copy into your Vault image or volume.
+
+FROM golang:1.25-bookworm AS build
+WORKDIR /src
+COPY go.mod go.sum ./
+RUN go mod download
+COPY . .
+RUN CGO_ENABLED=0 go build -trimpath -ldflags="-s -w" \
+    -o /out/vault-plugin-secrets-blockchain \
+    ./cmd/vault-plugin-secrets-blockchain
+
+FROM scratch AS export
+COPY --from=build /out/vault-plugin-secrets-blockchain /plugin/vault-plugin-secrets-blockchain
