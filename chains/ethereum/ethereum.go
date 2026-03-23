@@ -10,6 +10,14 @@ import (
 	"golang.org/x/crypto/sha3"
 )
 
+func (Chain) GenerateKey() ([]byte, error) {
+	priv, err := secp256k1.GeneratePrivateKey()
+	if err != nil {
+		return nil, err
+	}
+	return priv.Serialize(), nil
+}
+
 func init() {
 	chains.Register("ethereum", &Chain{})
 }
@@ -19,7 +27,6 @@ type Chain struct{}
 
 func (Chain) Name() string { return "ethereum" }
 
-// SignRaw signs a 32-byte hash and returns R||S||V (V is recovery id 0/1).
 func (Chain) SignRaw(key, hash []byte) ([]byte, error) {
 	if len(hash) != 32 {
 		return nil, fmt.Errorf("hash must be 32 bytes, got %d", len(hash))

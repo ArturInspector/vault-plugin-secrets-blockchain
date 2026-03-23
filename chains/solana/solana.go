@@ -1,6 +1,7 @@
 package solana
 
 import (
+	"crypto/rand"
 	"fmt"
 
 	"github.com/hashicorp/vault-plugin-secrets-kv/chains"
@@ -16,6 +17,14 @@ func init() {
 type Chain struct{}
 
 func (Chain) Name() string { return "solana" }
+
+func (Chain) GenerateKey() ([]byte, error) {
+	_, priv, err := ed25519.GenerateKey(rand.Reader)
+	if err != nil {
+		return nil, err
+	}
+	return priv, nil
+}
 
 // SignRaw signs the message (hash bytes) with ed25519; returns 64-byte signature.
 func (Chain) SignRaw(key, hash []byte) ([]byte, error) {

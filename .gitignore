@@ -40,8 +40,8 @@ Vagrantfile
 *.hcl
 !examples/**/*.hcl
 
-# Plugin binaries (build locally)
-vault-plugin-secrets-blockchain
+# Plugin binary at repo root (build locally; do not match cmd/vault-plugin-secrets-blockchain/)
+/vault-plugin-secrets-blockchain
 examples/plugin/*
 !examples/plugin/.gitkeep
 cmd/vsigner/vsigner

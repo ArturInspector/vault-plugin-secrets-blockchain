@@ -8,13 +8,11 @@ type stubChain struct {
 	name string
 }
 
-func (s stubChain) Name() string { return s.name }
-
-func (s stubChain) SignRaw(key, hash []byte) ([]byte, error) { return nil, nil }
-
-func (s stubChain) Sign(key, payload []byte) ([]byte, error) { return nil, nil }
-
-func (s stubChain) DeriveAddress(key []byte) (string, error) { return "", nil }
+func (s stubChain) Name() string                              { return s.name }
+func (s stubChain) GenerateKey() ([]byte, error)              { return []byte{1}, nil }
+func (s stubChain) SignRaw(key, hash []byte) ([]byte, error)  { return nil, nil }
+func (s stubChain) Sign(key, payload []byte) ([]byte, error)  { return nil, nil }
+func (s stubChain) DeriveAddress(key []byte) (string, error)  { return "", nil }
 
 func TestRegister_Get(t *testing.T) {
 	c := stubChain{name: "test-chain"}

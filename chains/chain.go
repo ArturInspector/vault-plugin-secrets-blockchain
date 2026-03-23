@@ -3,7 +3,7 @@ package chains
 import "sync"
 
 var (
-	registry   = map[string]Chain{}
+	registry   = map[string]Chain{} // todo: one register
 	registryMu sync.RWMutex
 )
 
@@ -22,9 +22,11 @@ func Get(name string) Chain {
 type Chain interface {
 	Name() string
 
+	GenerateKey() ([]byte, error)
+
 	SignRaw(key []byte, hash []byte) (signature []byte, err error)
 
-	Sign(key []byte, payload []byte) (signed []byte, err error) // todo: btc-eth-sol sign interfaces
+	Sign(key []byte, payload []byte) (signed []byte, err error)
 
 	DeriveAddress(key []byte) (address string, err error)
 }

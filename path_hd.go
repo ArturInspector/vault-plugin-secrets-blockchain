@@ -38,6 +38,8 @@ func coinTypeForChain(chainName string) (uint32, error) {
 		return 60, nil
 	case "bitcoin":
 		return 0, nil
+	case "tron":
+		return 195, nil
 	default:
 		return 0, fmt.Errorf("HD derivation not supported for chain %q", chainName)
 	}

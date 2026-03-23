@@ -7,6 +7,8 @@ import (
 	kv "github.com/hashicorp/vault-plugin-secrets-kv"
 	"github.com/hashicorp/vault/api"
 	"github.com/hashicorp/vault/sdk/plugin"
+
+	_ "github.com/hashicorp/vault-plugin-secrets-kv/chains/tron"
 )
 
 func main() {

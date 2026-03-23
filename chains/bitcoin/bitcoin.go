@@ -18,6 +18,14 @@ type Chain struct{}
 
 func (Chain) Name() string { return "bitcoin" }
 
+func (Chain) GenerateKey() ([]byte, error) {
+	priv, err := secp256k1.GeneratePrivateKey()
+	if err != nil {
+		return nil, err
+	}
+	return priv.Serialize(), nil
+}
+
 // 32-byte hash
 func (Chain) SignRaw(key, hash []byte) ([]byte, error) {
 	if len(hash) != 32 {
