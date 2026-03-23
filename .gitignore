@@ -44,10 +44,9 @@ Vagrantfile
 /vault-plugin-secrets-blockchain
 examples/plugin/*
 !examples/plugin/.gitkeep
+# Built CLIs only (not the cmd/vsigner/ source tree)
 cmd/vsigner/vsigner
 cmd/vsigner-ui/vsigner-ui
-**/vsigner
-**/vsigner-ui
 
 # Editor / agent (local)
 .cursor/

@@ -58,6 +58,16 @@ func walletCommands() *cli.Command {
 				},
 				Action: runWalletInfo,
 			},
+			{
+				Name:  "sign",
+				Usage: "sign a raw hex payload with wallet key",
+				Flags: []cli.Flag{
+					&cli.StringFlag{Name: "chain", Required: true, Usage: "ethereum | bitcoin"},
+					&cli.StringFlag{Name: "name", Required: true, Usage: "wallet name"},
+					&cli.StringFlag{Name: "data", Required: true, Usage: "hex-encoded payload to sign (e.g. tx hash)"},
+				},
+				Action: runWalletSign,
+			},
 		},
 	}
 }
@@ -178,5 +188,27 @@ func runWalletInfo(c *cli.Context) error {
 	fmt.Printf("address : %s\n", data["address"])
 	fmt.Printf("state   : %s\n", data["state"])
 	fmt.Printf("tier    : %s\n", data["tier"])
+	return nil
+}
+
+func runWalletSign(c *cli.Context) error {
+	v, err := newVaultClient()
+	if err != nil {
+		return err
+	}
+
+	chain := c.String("chain")
+	name := c.String("name")
+	hexData := c.String("data")
+
+	data, err := v.write("chains/"+chain+"/wallets/"+name+"/sign_raw", map[string]interface{}{
+		"data": hexData,
+	})
+	if err != nil {
+		return fmt.Errorf("sign failed: %w", err)
+	}
+
+	fmt.Printf("signature : %s\n", data["signature"])
+	fmt.Printf("address   : %s\n", data["address"])
 	return nil
 }
