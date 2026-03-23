@@ -1,5 +1,13 @@
 # vault-plugin-secrets-blockchain
 
+## Demo
+
+![CLI demo: Vault blockchain engine via vsigner (HD, derive, sign, freeze)](demo.gif)
+
+Recording: **[vsigner](cmd/vsigner/)** CLI (`status`, `hd`, `wallet …`) against a dev Vault with this plugin mounted. Reproduce: **[examples/README.md](examples/README.md)** (build plugin, Docker, register, then the same CLI commands).
+
+---
+
 ## You have a product. Now where do the keys live?
 
 Sooner or later you need to decide where to keep **company wallet keys**—not personal seed phrases in a notes app, but whatever will sign payouts, escrow releases, and refunds.
@@ -62,7 +70,7 @@ Details of signature encoding (e.g. Ethereum `R||S||V`, Bitcoin DER, Solana ed25
 
 ## Quick start (Docker + demo flow)
 
-Step-by-step (build script, `docker compose`, register, first `vault write`) is in **[examples/README.md](examples/README.md)**. That is the path we recommend for a **GIF or asciinema** (one terminal, steps 3–5).
+Step-by-step (build script, `docker compose`, register, first `vault write`) is in **[examples/README.md](examples/README.md)**. The **GIF** at the [top](#demo) shows the same flow via the CLI.
 
 Shorthand from repo root:
 
@@ -124,7 +132,7 @@ If you think you found a vulnerability in **this fork’s** blockchain signing c
 
 ## Visuals and site
 
-Screenshots, GIFs, and a dedicated landing page will be added separately so this file stays easy to read in a terminal and in git. When they exist, we will link them here.
+The **demo GIF** is at the [top of this README](#demo). A dedicated landing page may be added later.
 
 ---
 
