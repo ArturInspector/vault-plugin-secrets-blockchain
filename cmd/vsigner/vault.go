@@ -84,6 +84,10 @@ func (v *vaultClient) read(path string) (map[string]interface{}, error) {
 	return secret.Data, nil
 }
 
+func (v *vaultClient) putPolicy(name, rules string) error {
+	return v.client.Sys().PutPolicy(name, rules)
+}
+
 func (v *vaultClient) list(path string) ([]string, error) {
 	secret, err := v.client.Logical().List(v.mount + "/" + path)
 	if err != nil {

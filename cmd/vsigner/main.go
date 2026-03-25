@@ -15,8 +15,8 @@ func main() {
 
 	app := &cli.App{
 		Name:    "vsigner",
-		Version: "0.2.0",
-		Usage:   "Vault blockchain plugin CLI (this repo) — HD, wallets, audit, status",
+		Version: "0.3.0",
+		Usage:   "Vault blockchain plugin CLI — presets, HD, wallets, audit, status",
 		Description: strings.TrimSpace(`
 ` + title("Environment") + `
   VAULT_ADDR                 Vault API (default: http://127.0.0.1:8200)
@@ -25,9 +25,13 @@ func main() {
   VAULT_MOUNT                Engine mount path (default: blockchain)
 
 ` + title("Commands") + `
-  status, list   overview of Vault + all wallets (try ` + "`vsigner list`" + ` first)
-  hd, wallet, audit — run ` + "`vsigner <command> --help`" + ` for details.`),
+  quickstart     2-minute copy-paste (env + preset + first wallet)
+  preset         apply bundled ACLs (demo|full|…) — keys in Vault, policy in one shot
+  status, list   all wallets + health
+  hd, wallet, audit — ` + "`vsigner <cmd> --help` for details; audit --summary for a dashboard`"),
 		Commands: []*cli.Command{
+			quickstartCommand(),
+			presetCommands(),
 			statusCommands(),
 			overviewCommands(),
 			hdCommands(),
