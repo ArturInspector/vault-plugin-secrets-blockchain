@@ -267,13 +267,15 @@ func (b *blockchainBackend) handleWalletRead(ctx context.Context, req *logical.R
 		return nil, nil
 	}
 
-	return &logical.Response{
-		Data: map[string]interface{}{
-			"address": entry.Address,
-			"state":   string(entry.State),
-			"tier":    string(entry.Tier),
-		},
-	}, nil
+	out := map[string]interface{}{
+		"address": entry.Address,
+		"state":   string(entry.State),
+		"tier":    string(entry.Tier),
+	}
+	if entry.State == StateFrozen && entry.FreezeNote != "" {
+		out["freeze_note"] = entry.FreezeNote
+	}
+	return &logical.Response{Data: out}, nil
 }
 
 func (b *blockchainBackend) handleWalletDelete(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
