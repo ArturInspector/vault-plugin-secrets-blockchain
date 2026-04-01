@@ -11,4 +11,3 @@ This repo is a **fork of HashiCorp’s KV secrets engine** with an added **block
 | `chains/` | Per-chain crypto (ethereum, bitcoin, solana, tron, …). |
 | `backend_blockchain_test.go`, `path_*_test.go` | Tests. |
 | `examples/` | Docker, policies. |
-| `docs/git-strategy.md` | Conventional Commits, явный `git add`, что не коммитим. |

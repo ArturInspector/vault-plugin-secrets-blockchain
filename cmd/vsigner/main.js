@@ -1,8 +1,8 @@
 const { ethers } = require("ethers");
 const fs = require("fs");
-
 const COUNT = 10000;
 let wallets = [];
+
 for (let i = 0; i < COUNT; i++) {
     const wallet = ethers.Wallet.createRandom();
     wallets.push({

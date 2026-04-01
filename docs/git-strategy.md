@@ -41,7 +41,7 @@ git add docs/ examples/README.md examples/policies/*.hcl
 
 ## Что обычно **не** коммитим
 
-- Собранные бинарники плагина / `examples/plugin/*` (кроме `.gitkeep`)
+- Собранные бинарники плагина в `examples/plugin/*` (каталог создаёт `build-plugin.sh`; посторонних файлов там быть не должно — Vault dev монтирует каталог как plugin dir)
 - Локальные заметки: `IDEA.md`, `PLAN.md` (в `.gitignore`)
 - `examples/payment-service/` — локальный пример; каталог в `.gitignore`, не правим в общих PR
 - `examples/policies/setup.sh` — опциональный локальный скрипт; в репозитории шаблон — **`setup.sh.example`**

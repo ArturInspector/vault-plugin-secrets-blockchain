@@ -42,8 +42,8 @@ Vagrantfile
 
 # Plugin binary at repo root (build locally; do not match cmd/vault-plugin-secrets-blockchain/)
 /vault-plugin-secrets-blockchain
+# Built plugin only — no extra files (Vault dev loads every file in this dir as a plugin)
 examples/plugin/*
-!examples/plugin/.gitkeep
 # Built CLIs only (not the cmd/vsigner/ source tree)
 cmd/vsigner/vsigner
 cmd/vsigner-ui/vsigner-ui

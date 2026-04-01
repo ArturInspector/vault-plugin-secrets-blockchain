@@ -29,3 +29,17 @@ services:
       - ./plugin:/vault/plugins
     cap_add:
       - IPC_LOCK
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "wget",
+          "-q",
+          "-O",
+          "/dev/null",
+          "http://127.0.0.1:8200/v1/sys/health?standbyok=true",
+        ]
+      interval: 2s
+      timeout: 3s
+      retries: 20
+      start_period: 5s
