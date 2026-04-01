@@ -1,0 +1,810 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>vsigner — Wallet Dashboard</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #0f1117;
+      --surface: #1a1d27;
+      --border: #2a2d3e;
+      --text: #e2e8f0;
+      --muted: #64748b;
+      --accent: #6366f1;
+      --green: #22c55e;
+      --yellow: #eab308;
+      --red: #ef4444;
+      --blue: #38bdf8;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'SF Mono', 'Fira Code', monospace;
+      font-size: 13px;
+      min-height: 100vh;
+    }
+
+    header {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 16px 24px;
+      border-bottom: 1px solid var(--border);
+      background: var(--surface);
+    }
+
+    header h1 { font-size: 16px; font-weight: 600; letter-spacing: 0.05em; }
+    header .badge {
+      background: var(--accent);
+      color: #fff;
+      font-size: 10px;
+      padding: 2px 8px;
+      border-radius: 999px;
+      letter-spacing: 0.1em;
+    }
+    header .status-dot {
+      width: 8px; height: 8px; border-radius: 50%;
+      background: var(--muted);
+      margin-left: auto;
+      transition: background 0.3s;
+    }
+    header .status-dot.ok { background: var(--green); }
+
+    header .header-meta {
+      margin-left: auto;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      font-size: 11px;
+      color: var(--muted);
+    }
+    header .header-meta a {
+      color: var(--accent);
+      text-decoration: none;
+      border-bottom: 1px solid transparent;
+    }
+    header .header-meta a:hover { border-bottom-color: var(--accent); }
+    header .mount-pill {
+      font-size: 10px;
+      padding: 2px 8px;
+      border-radius: 4px;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      color: var(--text);
+    }
+
+    .layout {
+      display: grid;
+      grid-template-columns: 200px 1fr;
+      height: calc(100vh - 57px);
+    }
+
+    nav {
+      border-right: 1px solid var(--border);
+      padding: 16px 0;
+      background: var(--surface);
+    }
+
+    nav h2 {
+      font-size: 10px;
+      letter-spacing: 0.15em;
+      color: var(--muted);
+      padding: 0 16px 8px;
+      text-transform: uppercase;
+    }
+
+    nav button {
+      display: block;
+      width: 100%;
+      text-align: left;
+      padding: 8px 16px;
+      background: none;
+      border: none;
+      color: var(--muted);
+      cursor: pointer;
+      font-family: inherit;
+      font-size: 13px;
+      transition: all 0.15s;
+    }
+
+    nav button:hover { color: var(--text); background: var(--border); }
+    nav button.active { color: var(--accent); background: rgba(99,102,241,0.1); }
+
+    main {
+      padding: 24px;
+      overflow-y: auto;
+    }
+
+    .section-title {
+      font-size: 11px;
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 16px;
+    }
+
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 16px;
+      margin-bottom: 12px;
+    }
+
+    .card-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 12px;
+    }
+
+    .wallet-name { font-weight: 600; font-size: 14px; }
+    .wallet-addr { color: var(--muted); font-size: 11px; margin-top: 2px; word-break: break-all; }
+
+    .pill {
+      font-size: 10px;
+      padding: 2px 10px;
+      border-radius: 999px;
+      font-weight: 600;
+      letter-spacing: 0.05em;
+    }
+
+    .pill-hot    { background: rgba(239,68,68,0.15); color: var(--red); }
+    .pill-warm   { background: rgba(234,179,8,0.15); color: var(--yellow); }
+    .pill-cold   { background: rgba(56,189,248,0.15); color: var(--blue); }
+    .pill-operational { background: rgba(34,197,94,0.15); color: var(--green); }
+    .pill-frozen { background: rgba(239,68,68,0.15); color: var(--red); }
+
+    .meta-row {
+      display: flex;
+      gap: 16px;
+      margin-top: 8px;
+    }
+
+    .meta-item { display: flex; flex-direction: column; gap: 2px; }
+    .meta-label { font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.1em; }
+    .meta-value { font-size: 12px; }
+
+    .actions { display: flex; gap: 8px; margin-top: 12px; flex-wrap: wrap; align-items: center; }
+
+    .freeze-note {
+      margin-top: 10px;
+      padding: 8px 10px;
+      border-radius: 6px;
+      background: rgba(239,68,68,0.08);
+      border: 1px solid rgba(239,68,68,0.25);
+      font-size: 11px;
+      color: var(--muted);
+    }
+    .freeze-note strong { color: var(--text); }
+
+    .hint-line {
+      font-size: 11px;
+      color: var(--muted);
+      margin-bottom: 12px;
+      max-width: 720px;
+      line-height: 1.45;
+    }
+
+    .btn {
+      padding: 5px 12px;
+      border-radius: 6px;
+      border: 1px solid var(--border);
+      background: var(--bg);
+      color: var(--text);
+      cursor: pointer;
+      font-family: inherit;
+      font-size: 12px;
+      transition: all 0.15s;
+    }
+    .btn:hover { border-color: var(--accent); color: var(--accent); }
+    .btn-danger { border-color: rgba(239,68,68,0.4); color: var(--red); }
+    .btn-danger:hover { border-color: var(--red); background: rgba(239,68,68,0.1); }
+
+    .hd-card {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 12px;
+      margin-bottom: 24px;
+    }
+
+    .stat-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 16px;
+    }
+
+    .stat-label { font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.1em; }
+    .stat-value { font-size: 28px; font-weight: 700; margin-top: 4px; }
+    .stat-sub   { font-size: 11px; color: var(--muted); margin-top: 2px; }
+
+    .chain-tabs { display: flex; gap: 8px; margin-bottom: 20px; flex-wrap: wrap; }
+    .chain-tab {
+      padding: 5px 14px;
+      border-radius: 6px;
+      border: 1px solid var(--border);
+      background: var(--bg);
+      color: var(--muted);
+      cursor: pointer;
+      font-family: inherit;
+      font-size: 12px;
+      transition: all 0.15s;
+    }
+    .chain-tab.active, .chain-tab:hover { border-color: var(--accent); color: var(--accent); background: rgba(99,102,241,0.1); }
+
+    .empty { color: var(--muted); padding: 32px; text-align: center; }
+
+    .loader {
+      display: inline-block;
+      width: 12px; height: 12px;
+      border: 2px solid var(--border);
+      border-top-color: var(--accent);
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    #toast {
+      position: fixed;
+      bottom: 24px; right: 24px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 12px 16px;
+      font-size: 12px;
+      opacity: 0;
+      transition: opacity 0.2s;
+      pointer-events: none;
+      z-index: 100;
+    }
+    #toast.show { opacity: 1; }
+    #toast.err  { border-color: var(--red); color: var(--red); }
+    #toast.ok   { border-color: var(--green); color: var(--green); }
+
+    .wallet-tools {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      margin-bottom: 16px;
+    }
+    @media (max-width: 800px) {
+      .wallet-tools { grid-template-columns: 1fr; }
+    }
+    .form-grid { display: flex; flex-direction: column; gap: 10px; margin-top: 8px; }
+    .form-row { display: flex; flex-wrap: wrap; gap: 8px; align-items: flex-end; }
+    .form-row label { font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.08em; display: flex; flex-direction: column; gap: 4px; }
+    .form-row input, .form-row select, .form-row textarea {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      color: var(--text);
+      border-radius: 6px;
+      padding: 6px 10px;
+      font-family: inherit;
+      font-size: 12px;
+      min-width: 140px;
+    }
+    .form-row textarea { width: 100%; min-height: 64px; resize: vertical; }
+    .sub-hint { font-size: 10px; color: var(--muted); line-height: 1.4; margin-top: 4px; }
+
+    .modal-overlay {
+      position: fixed; inset: 0;
+      background: rgba(0,0,0,0.65);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 200;
+      padding: 16px;
+    }
+    .modal-overlay.show { display: flex; }
+    .modal-box { max-width: 520px; width: 100%; max-height: 90vh; overflow: auto; }
+    .modal-box pre {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 12px;
+      font-size: 11px;
+      word-break: break-all;
+      white-space: pre-wrap;
+      margin: 12px 0;
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <span>🔐</span>
+  <h1>vsigner</h1>
+  <span class="badge">VAULT</span>
+  <div class="header-meta">
+    <span class="mount-pill" id="mountPill" title="Secrets engine mount">mount: …</span>
+    <a id="vaultUILink" href="#" target="_blank" rel="noopener noreferrer">Open Vault Web UI</a>
+    <div class="status-dot" id="statusDot" title="Vault reachable (sys/health)"></div>
+  </div>
+</header>
+
+<div class="layout">
+  <nav>
+    <h2>Navigation</h2>
+    <button class="active" onclick="showSection('wallets')">Wallets</button>
+    <button onclick="showSection('hd')">HD Seed</button>
+    <button onclick="showSection('audit')">Audit</button>
+  </nav>
+
+  <main id="content">
+    <div class="empty"><span class="loader"></span></div>
+  </main>
+</div>
+
+<div id="toast"></div>
+
+<div id="modalOverlay" class="modal-overlay" aria-hidden="true" onclick="if (event.target === this) closeSeedModal()">
+  <div class="modal-box card">
+    <div class="wallet-name" id="modalTitle">HD seed</div>
+    <p class="hint-line" id="modalHint">Сохраните в безопасном месте. После закрытия окна этот текст из UI не повторить.</p>
+    <pre id="modalSeedBody"></pre>
+    <div class="actions" style="margin-top:0">
+      <button type="button" class="btn" onclick="copyModalSeed()">Copy</button>
+      <button type="button" class="btn" onclick="closeSeedModal()">Close</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const CHAINS = ['ethereum', 'bitcoin', 'tron', 'solana'];
+let currentChain = 'ethereum';
+let currentSection = 'wallets';
+/** @type {{ vaultAddr: string, mount: string, vaultUIUrl: string }} */
+let appConfig = { vaultAddr: '', mount: '', vaultUIUrl: '' };
+
+// ── API ──────────────────────────────────────────────────────────────────────
+
+async function api(path, method = 'GET', body = null) {
+  const opts = { method };
+  if (body != null) {
+    opts.headers = { 'Content-Type': 'application/json' };
+    opts.body = JSON.stringify(body);
+  }
+  const r = await fetch('/api/' + path, opts);
+  const text = await r.text();
+  try { return { ok: r.ok, status: r.status, data: JSON.parse(text) }; }
+  catch { return { ok: r.ok, status: r.status, data: { error: text } }; }
+}
+
+/** Vault: errors[]; прокси vsigner-ui при сбое сети: error (строка). */
+function vaultErr(r) {
+  const d = r?.data;
+  if (!d) return String(r?.status ?? '');
+  if (Array.isArray(d.errors) && d.errors.length) return String(d.errors[0]);
+  if (typeof d.error === 'string' && d.error) return d.error;
+  return String(r.status);
+}
+
+async function listWallets(chain) {
+  return api(`chains/${chain}/wallets/`);
+}
+
+async function getWallet(chain, name) {
+  return api(`chains/${chain}/wallets/${name}`);
+}
+
+async function freezeWallet(chain, name, note = '') {
+  return api(`chains/${chain}/wallets/${name}/freeze`, 'POST', { note });
+}
+
+async function unfreezeWallet(chain, name) {
+  return api(`chains/${chain}/wallets/${name}/unfreeze`, 'POST', null);
+}
+
+async function rotateWallet(chain, name) {
+  return api(`chains/${chain}/wallets/${name}/rotate`, 'POST', null);
+}
+
+async function createWallet(chain, name, tier) {
+  return api(`chains/${chain}/wallets/${encodeURIComponent(name)}`, 'POST', { tier });
+}
+
+async function importWallet(chain, name, privateKeyHex, tier) {
+  return api(`chains/${chain}/wallets/${encodeURIComponent(name)}/import`, 'POST', {
+    private_key: privateKeyHex.trim(),
+    tier,
+  });
+}
+
+async function deleteWallet(chain, name) {
+  return api(`chains/${chain}/wallets/${encodeURIComponent(name)}`, 'DELETE', null);
+}
+
+async function hdInit() {
+  return api('hd', 'POST', {});
+}
+
+async function hdStatus() {
+  return api('hd');
+}
+
+function escHtml(s) {
+  const d = document.createElement('div');
+  d.textContent = s;
+  return d.innerHTML;
+}
+
+/** Explorer deep links (on-chain balance там — плагин сеть не дергает). */
+function explorerUrl(chain, address) {
+  if (!address || address === '—') return null;
+  switch (chain) {
+    case 'ethereum': return 'https://etherscan.io/address/' + encodeURIComponent(address);
+    case 'bitcoin': return 'https://mempool.space/address/' + encodeURIComponent(address);
+    case 'tron': return 'https://tronscan.org/#/address/' + encodeURIComponent(address);
+    case 'solana': return 'https://solscan.io/account/' + encodeURIComponent(address);
+    default: return null;
+  }
+}
+
+function tierOptionsHtml(selected) {
+  const tiers = ['hot', 'warm', 'cold'];
+  return tiers.map(t => `<option value="${t}" ${t === selected ? 'selected' : ''}>${t}</option>`).join('');
+}
+
+function showSeedModal(seedHex, fingerprint) {
+  const pre = document.getElementById('modalSeedBody');
+  let t = String(seedHex);
+  if (fingerprint) t += '\n\nfingerprint: ' + fingerprint;
+  pre.textContent = t;
+  const ov = document.getElementById('modalOverlay');
+  ov.classList.add('show');
+  ov.setAttribute('aria-hidden', 'false');
+}
+
+function closeSeedModal() {
+  document.getElementById('modalSeedBody').textContent = '';
+  const ov = document.getElementById('modalOverlay');
+  ov.classList.remove('show');
+  ov.setAttribute('aria-hidden', 'true');
+}
+
+function copyModalSeed() {
+  const t = document.getElementById('modalSeedBody').textContent;
+  if (!t) return;
+  navigator.clipboard.writeText(t).then(() => toast('Скопировано', 'ok'));
+}
+
+async function submitCreateWallet() {
+  const name = (document.getElementById('wc-name')?.value || '').trim();
+  const tier = document.getElementById('wc-tier')?.value || 'hot';
+  if (!name) { toast('Укажите имя кошелька', 'err'); return; }
+  const r = await createWallet(currentChain, name, tier);
+  if (r.ok) {
+    const addr = r.data?.data?.address || '';
+    toast(addr ? `Создан: ${addr.slice(0, 14)}…` : 'Кошелёк создан', 'ok');
+    document.getElementById('wc-name').value = '';
+    await loadWalletList();
+  } else toast(vaultErr(r), 'err');
+}
+
+async function submitImportWallet() {
+  const name = (document.getElementById('wi-name')?.value || '').trim();
+  const key = (document.getElementById('wi-key')?.value || '').trim();
+  const tier = document.getElementById('wi-tier')?.value || 'hot';
+  if (!name || !key) { toast('Имя и private key обязательны', 'err'); return; }
+  const r = await importWallet(currentChain, name, key, tier);
+  const keyEl = document.getElementById('wi-key');
+  if (keyEl) keyEl.value = '';
+  if (r.ok) {
+    const addr = r.data?.data?.address || '';
+    toast(addr ? `Импорт: ${addr.slice(0, 14)}…` : 'Импорт выполнен', 'ok');
+    document.getElementById('wi-name').value = '';
+    await loadWalletList();
+  } else toast(vaultErr(r), 'err');
+}
+
+async function runHdInit() {
+  if (!confirm('Инициализировать глобальный HD master в этом mount? Делайте только по доверенной сети (HTTPS), с узкой политикой Vault.')) return;
+  const r = await hdInit();
+  if (!r.ok) { toast(vaultErr(r), 'err'); return; }
+  const d = r.data?.data || {};
+  await renderHD();
+  if (d.seed) showSeedModal(d.seed, d.fingerprint);
+  else if (d.fingerprint) toast('HD инициализирован', 'ok');
+}
+
+async function doDelete(chain, name) {
+  if (!confirm(`Удалить кошелёк "${name}" безвозвратно из Vault? Требуется статус frozen.`)) return;
+  if (!confirm('Финальное подтверждение удаления.')) return;
+  const r = await deleteWallet(chain, name);
+  if (r.ok) { toast('Удалено', 'ok'); await loadWalletList(); }
+  else toast(vaultErr(r), 'err');
+}
+
+// ── Sections ─────────────────────────────────────────────────────────────────
+
+function showSection(name) {
+  currentSection = name;
+  document.querySelectorAll('nav button').forEach((b, i) => {
+    b.classList.toggle('active', ['wallets','hd','audit'][i] === name);
+  });
+  render();
+}
+
+async function render() {
+  if (currentSection === 'wallets') await renderWallets();
+  else if (currentSection === 'hd') await renderHD();
+  else renderAudit();
+}
+
+// ── Wallets ───────────────────────────────────────────────────────────────────
+
+async function renderWallets() {
+  const el = document.getElementById('content');
+  el.innerHTML = `
+    <div class="section-title">Wallets</div>
+    <p class="hint-line">Баланс в сети плагин не показывает (это не кошелёк, а граница подписи в Vault). Смотрите explorer или свой RPC/индексатор.</p>
+    <div class="chain-tabs">
+      ${CHAINS.map(c => `<button class="chain-tab ${c===currentChain?'active':''}" onclick="switchChain('${c}')">${c}</button>`).join('')}
+    </div>
+    <div class="wallet-tools">
+      <div class="card">
+        <div class="wallet-name">Создать кошелёк</div>
+        <p class="sub-hint">Новый случайный ключ для цепи <strong>${escHtml(currentChain)}</strong>. Имя — как в Vault (буквы, цифры, дефис).</p>
+        <div class="form-grid">
+          <div class="form-row">
+            <label>Имя <input type="text" id="wc-name" placeholder="my-wallet" autocomplete="off" /></label>
+            <label>Tier <select id="wc-tier">${tierOptionsHtml('hot')}</select></label>
+            <button type="button" class="btn" onclick="submitCreateWallet()">Создать</button>
+          </div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="wallet-name">Импорт ключа</div>
+        <p class="sub-hint">Приватный ключ в hex передаётся в Vault через прокси (только HTTPS в проде). После отправки поле очищается. Политика — минимальные права.</p>
+        <div class="form-grid">
+          <div class="form-row">
+            <label>Имя <input type="text" id="wi-name" placeholder="imported-1" autocomplete="off" /></label>
+            <label>Tier <select id="wi-tier">${tierOptionsHtml('hot')}</select></label>
+          </div>
+          <label>private_key (hex) <textarea id="wi-key" placeholder="…" spellcheck="false" autocomplete="off"></textarea></label>
+          <button type="button" class="btn" onclick="submitImportWallet()">Импортировать</button>
+        </div>
+      </div>
+    </div>
+    <div id="wallet-list"><span class="loader"></span></div>
+  `;
+  await loadWalletList();
+}
+
+async function loadWalletList() {
+  const el = document.getElementById('wallet-list');
+  if (!el) return;
+
+  const r = await listWallets(currentChain);
+  if (!r.ok) {
+    const msg = escHtml(vaultErr(r));
+    const low = vaultErr(r).toLowerCase();
+    const mount = escHtml(appConfig.mount || 'blockchain');
+    let hint = '';
+    if (r.status === 502) {
+      hint = '<br><br><span style="opacity:0.85">502 обычно значит: vsigner-ui не достучался до Vault. Проверьте <code>VAULT_ADDR</code>, что Vault запущен, и токен (<code>VAULT_TOKEN</code>) для запросов к mount.</span>';
+    } else if (r.status === 403 || low.includes('permission denied')) {
+      hint = `<br><br><span style="opacity:0.85">У токена нет прав в Vault. Для списка кошельков нужны <code>list</code> на <code>${mount}/chains/*/wallets/</code> и <code>read</code> на <code>${mount}/chains/*/wallets/*</code> (префикс = ваш <code>VAULT_MOUNT</code>). Пример политики: <code>examples/policies/readonly-addresses.hcl</code> → <code>vault policy write …</code>, затем выдайте токен с этой политикой и подставьте его в <code>VAULT_TOKEN</code> для vsigner-ui.</span>`;
+    }
+    el.innerHTML = `<div class="empty">Не удалось загрузить кошельки: ${msg}${hint}</div>`;
+    return;
+  }
+
+  const keys = r.data?.data?.keys || [];
+  if (keys.length === 0) {
+    el.innerHTML = `<div class="empty">Нет кошельков для <strong>${escHtml(currentChain)}</strong>. Создайте через форму выше или <code>vsigner wallet derive --chain ${escHtml(currentChain)}</code>.</div>`;
+    return;
+  }
+
+  const wallets = await Promise.all(keys.map(k => getWallet(currentChain, k).then(r => ({ name: k, ...r.data?.data }))));
+  el.innerHTML = wallets.map(w => walletCard(currentChain, w)).join('');
+}
+
+function walletCard(chain, w) {
+  const tier = w.tier || 'hot';
+  const state = w.state || 'operational';
+  const frozen = state === 'frozen';
+  const ex = explorerUrl(chain, w.address);
+  const note = w.freeze_note ? String(w.freeze_note) : '';
+  const hdHint = /^hd\-[^-]+\-\d+$/.test(w.name)
+    ? `<div class="meta-item"><span class="meta-label">HD</span><span class="meta-value">derived (name = index)</span></div>`
+    : '';
+  const safeId = chain + '-' + String(w.name).replace(/[^a-zA-Z0-9_-]/g, '_');
+  return `
+    <div class="card" id="card-${safeId}">
+      <div class="card-header">
+        <div>
+          <div class="wallet-name">${escHtml(w.name)}</div>
+          <div class="wallet-addr">${escHtml(w.address || '—')}</div>
+        </div>
+        <div style="display:flex;gap:6px;align-items:center">
+          <span class="pill pill-${tier}">${tier.toUpperCase()}</span>
+          <span class="pill pill-${state}">${state}</span>
+        </div>
+      </div>
+      <div class="meta-row">
+        <div class="meta-item"><span class="meta-label">Chain</span><span class="meta-value">${escHtml(chain)}</span></div>
+        <div class="meta-item"><span class="meta-label">Tier</span><span class="meta-value">${escHtml(tier)}</span></div>
+        <div class="meta-item"><span class="meta-label">State</span><span class="meta-value">${escHtml(state)}</span></div>
+        ${hdHint}
+      </div>
+      ${frozen && note ? `<div class="freeze-note"><strong>Freeze note</strong> — ${escHtml(note)}</div>` : ''}
+      <div class="actions">
+        ${frozen
+          ? `<button type="button" class="btn" onclick="doUnfreeze(${JSON.stringify(chain)}, ${JSON.stringify(w.name)})">Unfreeze</button>`
+          : `<button type="button" class="btn btn-danger" onclick="doFreeze(${JSON.stringify(chain)}, ${JSON.stringify(w.name)})">Freeze</button>`
+        }
+        ${!frozen ? `<button type="button" class="btn btn-danger" onclick="doRotate(${JSON.stringify(chain)}, ${JSON.stringify(w.name)})">Rotate key</button>` : ''}
+        ${frozen ? `<button type="button" class="btn btn-danger" onclick="doDelete(${JSON.stringify(chain)}, ${JSON.stringify(w.name)})">Delete</button>` : ''}
+        <button type="button" class="btn" onclick="copyAddr(${JSON.stringify(w.address || '')})">Copy address</button>
+        ${ex ? `<a class="btn" href="${ex}" target="_blank" rel="noopener noreferrer">Explorer</a>` : ''}
+      </div>
+    </div>
+  `;
+}
+
+function switchChain(chain) {
+  currentChain = chain;
+  renderWallets();
+}
+
+async function doFreeze(chain, name) {
+  const note = prompt(`Reason for freezing "${name}":`) || '';
+  const r = await freezeWallet(chain, name, note);
+  if (r.ok) { toast(`${name} frozen`, 'ok'); await loadWalletList(); }
+  else toast(vaultErr(r) || 'Freeze failed', 'err');
+}
+
+async function doUnfreeze(chain, name) {
+  const r = await unfreezeWallet(chain, name);
+  if (r.ok) { toast(`${name} unfrozen`, 'ok'); await loadWalletList(); }
+  else toast(vaultErr(r) || 'Unfreeze failed', 'err');
+}
+
+async function doRotate(chain, name) {
+  if (!confirm(`Rotate key for "${name}"?\n\nСтарый адрес перестанет соответствовать ключу; обновите депозиты/подписи. Продолжить?`)) return;
+  const r = await rotateWallet(chain, name);
+  if (r.ok) {
+    const addr = r.data?.data?.address || '';
+    toast(addr ? `Rotated → ${addr.slice(0, 10)}…` : 'Key rotated', 'ok');
+    await loadWalletList();
+  } else {
+    toast(vaultErr(r) || 'Rotate failed', 'err');
+  }
+}
+
+function copyAddr(addr) {
+  navigator.clipboard.writeText(addr).then(() => toast('Address copied', 'ok'));
+}
+
+// ── HD Seed ───────────────────────────────────────────────────────────────────
+
+async function renderHD() {
+  const el = document.getElementById('content');
+  el.innerHTML = `<div class="section-title">HD Master Seed</div><div class="loader"></div>`;
+
+  const r = await hdStatus();
+  if (!r.ok) {
+    const err = vaultErr(r);
+    if (err.toLowerCase().includes('not initialized')) {
+      el.innerHTML = `
+    <div class="section-title">HD Master Seed</div>
+    <div class="card">
+      <div class="wallet-name">Не инициализирован</div>
+      <p class="hint-line">Будет создан master seed в Vault. В ответе один раз может вернуться hex seed — сохраните offline. Используйте HTTPS и политику Vault.</p>
+      <button type="button" class="btn" onclick="runHdInit()">Инициализировать HD master</button>
+      <p class="sub-hint" style="margin-top:12px">Альтернатива CLI: <code>vsigner hd init</code></p>
+    </div>`;
+      return;
+    }
+    el.innerHTML = `<div class="section-title">HD Master Seed</div><div class="card"><div class="empty">Ошибка: ${escHtml(err)}</div></div>`;
+    return;
+  }
+
+  const d = r.data?.data || {};
+  el.innerHTML = `
+    <div class="section-title">HD Master Seed</div>
+    <div class="hd-card">
+      <div class="stat-card">
+        <div class="stat-label">Status</div>
+        <div class="stat-value" style="color:var(--green);font-size:16px">✓ Initialized</div>
+        <div class="stat-sub">SealWrapped in Vault storage</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Wallets Derived</div>
+        <div class="stat-value">${d.child_count ?? '—'}</div>
+        <div class="stat-sub">of 200 max</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Fingerprint</div>
+        <div class="stat-value" style="font-size:18px;letter-spacing:0.1em">${d.fingerprint ?? '—'}</div>
+        <div class="stat-sub">BIP32 master key ID</div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="section-title" style="margin-bottom:8px">Derive new wallet</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        ${CHAINS.filter(c => c !== 'solana').map(c =>
+          `<button class="btn" onclick="deriveWallet('${c}')">+ ${c}</button>`
+        ).join('')}
+      </div>
+    </div>
+  `;
+}
+
+async function deriveWallet(chain) {
+  const name = prompt(`Wallet name for ${chain} (leave blank for auto):`);
+  const body = {};
+  if (name) body.name = name;
+  const r = await api(`hd/derive/${chain}`, 'POST', body);
+  if (r.ok) {
+    const d = r.data?.data;
+    toast(`Derived ${d?.name} → ${d?.address?.slice(0,12)}...`, 'ok');
+    renderHD();
+  } else {
+    toast(vaultErr(r) || 'Derive failed', 'err');
+  }
+}
+
+// ── Audit ─────────────────────────────────────────────────────────────────────
+
+function renderAudit() {
+  document.getElementById('content').innerHTML = `
+    <div class="section-title">Audit Log</div>
+    <div class="card">
+      <div class="wallet-name">Audit log viewer</div>
+      <div class="wallet-addr" style="margin-top:8px">
+        Use <code>vsigner audit --log /path/to/vault-audit.log</code> to generate a report.<br><br>
+        Vault audit log location depends on your Vault configuration.<br>
+        Enable it with: <code>vault audit enable file file_path=/var/log/vault/audit.log</code>
+      </div>
+    </div>
+  `;
+}
+
+// ── Toast ─────────────────────────────────────────────────────────────────────
+
+function toast(msg, type = '') {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.className = `show ${type}`;
+  clearTimeout(el._t);
+  el._t = setTimeout(() => el.className = '', 3000);
+}
+
+// ── Health check ──────────────────────────────────────────────────────────────
+
+async function checkHealth() {
+  const dot = document.getElementById('statusDot');
+  try {
+    const r = await fetch('/api/sys/health');
+    dot.className = r.ok ? 'status-dot ok' : 'status-dot';
+  } catch {
+    dot.className = 'status-dot';
+  }
+}
+
+async function loadConfig() {
+  try {
+    const r = await fetch('/api/config');
+    if (!r.ok) return;
+    appConfig = await r.json();
+    const mount = appConfig.mount || '—';
+    document.getElementById('mountPill').textContent = 'mount: ' + mount;
+    const a = document.getElementById('vaultUILink');
+    a.href = appConfig.vaultUIUrl || '#';
+    a.style.opacity = appConfig.vaultUIUrl ? '1' : '0.5';
+  } catch { /* ignore */ }
+}
+
+// ── Init ──────────────────────────────────────────────────────────────────────
+loadConfig().then(() => { checkHealth(); render(); });
+setInterval(checkHealth, 30000);
+</script>
+</body>
+</html>
